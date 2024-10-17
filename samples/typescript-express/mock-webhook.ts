@@ -28,6 +28,8 @@ app.post("/", async (req: Request, res: Response) => {
     console.log(`Signature verified`);
   } else {
     console.log(`Signature verification failed`);
+    res.sendStatus(403);
+    return;
   }
 
   if (req.body.meta.type === "medical.document-download") {

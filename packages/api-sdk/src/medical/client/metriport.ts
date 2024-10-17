@@ -725,7 +725,7 @@ export class MetriportMedicalApi {
       .createHmac("sha256", wh_key)
       .update(JSON.stringify(reqBody))
       .digest("hex");
-    return receivedHash === signatureAsString;
+    return crypto.timingSafeEqual(receivedHash, signatureAsString);
   }
 
   /**

@@ -15,25 +15,20 @@ WH_KEY = gcp_instance.get_secret("METRIPORT_WH_KEY")
 PATIENT_ID = gcp_instance.get_secret("METRIPORT_PATIENT_ID")
 
 # Function to verify webhook signature
-def verify_webhook_signature(key, message, signature, digestmod=hashlib.sha256):
+def verify_webhook_signature(key, message_bytestring, signature, digestmod=hashlib.sha256):
     """
     Verify the HMAC signature for a given message and key.
 
     :param key: The secret key (string).
-    :param message: The message to be authenticated (string in JSON format).
+    :param message_bytestring: The message to be authenticated (bytesrting)
     :param signature: The provided HMAC signature to verify against (string).
     :param digestmod: The hash function to use (defaults to hashlib.sha256).
     :return: True if signature is verified, False otherwise.
     """
-
-    message_bytestring = json.dumps(message, separators=(',', ':')).encode()  # Convert the message string to bytes
-    key_bytestring = key.encode()  # Convert the key string to bytes
+    key_bytestring = key.encode()
     hmac_object = hmac.new(key_bytestring, message_bytestring, digestmod)
     computed_signature = hmac_object.hexdigest()
-    return signature == computed_signature
-
-class WebhookPayload(BaseModel):
-    ping: str = None
+    return hmac.compare_digest(signature, computed_signature)
 
 
 @app.post("/")
@@ -50,15 +45,18 @@ async def webhook(request: Request):
     :param request: The request object.
     :return: A response object.
     """
-    body = await request.json()
+    body_bytes = await request.body
     signature = request.headers.get('x-metriport-signature')
 
-    print(json.dumps(body, indent=2))
+    print(json.dumps(json.loads(body), indent=2))
     
     if verify_webhook_signature(WH_KEY, body, signature):
         print('Signature verified')
     else:
         print('Signature verification failed')
+        return Response(status_code=status.HTTP_403_FORBIDDEN)
+
+    body = json.loads(body_bytes)
 
     if 'ping' in body:
         print('Sending 200 | OK + "pong" body param')
